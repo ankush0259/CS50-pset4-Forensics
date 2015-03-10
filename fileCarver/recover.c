@@ -1,10 +1,9 @@
 /****************************************************************************
 * recover.c
 *
-* Computer Science 50
-* Problem Set 4
+* Recovers files from a forensic image.
+* Refer to the usage statement for supported file types.
 *
-* Recovers JPEGs from a forensic image.
 ***************************************************************************/
 
 #include <stdio.h>
@@ -15,11 +14,13 @@
 // create a type of unsigned integers of length of 8 bits (1 byte)
 typedef uint8_t BYTE;
 
+// define function to check file types indicated in argv.
 char* checkFileType(int argc, char** argv, BYTE* block);
 
 // define blocksize to avoid magic number
 #define BLOCKSIZE 512
 
+// enum with supported file types
 typedef enum {
 	PDF,
 	BMP,
@@ -36,6 +37,7 @@ typedef enum {
 // if ((block[0] == 0xff) && (block[1] == 0xd8) && (block[2] == 0xff) && (block[3] == 0xe0 || block[3] == 0xe1))
 // if ((block[0] == 0x89) && (block[1] == 0x50) && (block[2] == 0x4e) && (block[3] == 0x47) && (block[4] == 0x0d) && (block[5] == 0x0a) && (block[6] == 0x1a) && (block[7] == 0x0a))
 
+// Array storing all supported file type signatures.
 BYTE* supportedFT[] = {	"\x25\x50\x44\x46",
 			"\x42\x4d",
 			"\xff\xd8\xff\xe0",
@@ -45,8 +47,12 @@ BYTE* supportedFT[] = {	"\x25\x50\x44\x46",
 			"\x47\x49\x46\x38\x37\x61",
 			"\x47\x49\x46\x38\x39\x61"
 			};
+
+// Matches above array with lengths of signatures.
+// (cannot preform strlen on signatures because may contain \x00).
 int FTLens[] = { 4, 2, 4, 4, 4, 8, 6, 6};
 
+// Converts string argument to enum filetype.
 fileType convertArg(char* arg)
 {
 	if(strcmp(arg, "-pdf") == 0)
@@ -59,6 +65,8 @@ fileType convertArg(char* arg)
 		return PNG;
 	else if(strcmp(arg, "-gif") == 0)
 		return GIF;
+	// -all will return PDF because it is first case statement. -all
+	// will fall through all case statements, thus checking all signatures.
 	else if(strcmp(arg, "-all") == 0)
 		return PDF;
 	else
@@ -69,15 +77,18 @@ fileType convertArg(char* arg)
 		printf(" -jpg		- Recovers jpg files\n");
 		printf(" -png		- Recovers png files\n");
 		printf(" -gif		- Recovers gif files\n");
+		printf(" -all		- Recovers all supported files\n");
 		exit(-1);
 	}	
 }
 
+// Checks the current file for each file type listed in argv.
 char* checkFileType(int argc, char** argv, BYTE* block){
 
 	char* ret = NULL;	
 	
 	int i;
+	// Loops through args checking each one using switch statement
 	for(i = 2; i < argc; i++)
 	{
 		if(ret != NULL)
@@ -100,6 +111,8 @@ char* checkFileType(int argc, char** argv, BYTE* block){
 						ret = ".pdf";
 					}
 				}		
+				// If argv is -all and current file is not a pdf (ret 
+				// is still null), then fall through to next signature
 				if(strcmp(argv[2], "-all") != 0 || ret != NULL)
 					break;
 
@@ -118,7 +131,7 @@ char* checkFileType(int argc, char** argv, BYTE* block){
 				if(strcmp(argv[2], "-all") != 0 || ret != NULL)
 					break;
 				
-			case JPG: ;
+			case JPG: ;	// JPG has 3 signatures. We check each simultaneously
 				sig = supportedFT[JPG];
 				sig2 = supportedFT[JPG2];
 				sig3 = supportedFT[JPG3];
@@ -177,11 +190,13 @@ int main (int argc, char** argv)
 	// Check arguments for usage
 	if(argc <= 2)
 	{
-		printf("USAGE: ./recover <imageFile> [-options]\n");
+		printf("USAGE: ./recover <imageFile> <-options>\n");
 		printf(" -pdf		- Recovers pdf files\n");
 		printf(" -bmp		- Recovers bmp files\n");
 		printf(" -jpg		- Recovers jpg files\n");
 		printf(" -png		- Recovers png files\n");
+		printf(" -gif		- Recovers gif files\n");
+		printf(" -all		- Recovers all supported files\n");
 		exit(-1);
 	} 
 
@@ -199,7 +214,7 @@ int main (int argc, char** argv)
     FILE *outfile;
     outfile = NULL;
     
-    // create a variable to name the new image files
+    // create a variable to name the new files
     int fileNum = 0;
     
     // forever loop that will end when the file has been read
@@ -228,13 +243,17 @@ int main (int argc, char** argv)
             fread(&block[i], sizeof (BYTE), 1, fp);
         }
 
+		// variable for extension
 		char* ext = NULL;
         
+		// get extension if indicated in argv
 		ext = checkFileType(argc, argv, block);
-        // if block's first 4 bytes match those of a jpg (start of new jpg)      
+
+	        // if block's first 4 bytes match those of a jpg (start of new jpg)      
 		if (ext != NULL)
 		{
-            // close previously opened output file pointer if necessary
+        
+	    // close previously opened output file pointer if necessary
             if (outfile != NULL)
             {
                 fclose(outfile);
@@ -243,7 +262,7 @@ int main (int argc, char** argv)
             // create a constant char array for filename
             char filename[4];
             
-            // name file using ###.jpg format
+            // name file using ###.ext format
             sprintf(filename, "%03d%s", fileNum, ext);
 			printf("file %d = %s\n", fileNum, filename);
             fileNum++; 
@@ -251,11 +270,11 @@ int main (int argc, char** argv)
             // open the output file pointer and make sure it's not NULL
             if ((outfile = fopen(filename, "w")) == NULL)
             {
-                printf("Could not write image.\n");
+                printf("Could not write file.\n");
                 return 1;
             }
  
-            // write the block containing the photo to the outfile
+            // write the block containing the file to the outfile
             fwrite(&block[0], BLOCKSIZE * sizeof (BYTE), 1, outfile);
         }
         
