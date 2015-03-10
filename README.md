@@ -20,10 +20,14 @@ To recover multiple file types use a command similar to the one below:
 
 <code>./recover.o test.iso -png -pdf </code>
 
+Or to recover all supported file types use the -all switch:
+
+<code>./recover.o test.iso -all </code>
+
 ##Recompile
 Feel free to edit the recover.c file. Once you have edited the file you will need to compile it using gcc. See the command below:
 
-<code>gcc -std=c99 recover.c -o recover.o</code>
+<code>gcc recover.c -o recover.o</code>
 
 ## Contributors
 This project was originally created by akush0259. It has since been upgraded by montaukk and tbristow.
